@@ -1,0 +1,7 @@
+package/dist/
+package/aux4-cron
+aux4-cron
+
+go.sum
+
+.DS_Store
