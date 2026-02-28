@@ -1,20 +1,31 @@
 {
   "scope": "aux4",
   "name": "cron",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "user-friendly cron scheduler with aux4/jobs integration",
   "license": "Apache-2.0",
   "git": "https://github.com/aux4/cron",
-  "tags": ["aux4", "cron", "scheduler", "jobs"],
-  "dependencies": ["aux4/jobs"],
+  "tags": [
+    "aux4",
+    "cron",
+    "scheduler",
+    "jobs"
+  ],
+  "dependencies": [
+    "aux4/jobs"
+  ],
   "profiles": [
     {
       "name": "main",
       "commands": [
         {
           "name": "cron",
-          "execute": ["profile:cron"],
-          "help": { "text": "user-friendly cron scheduler" }
+          "execute": [
+            "profile:cron"
+          ],
+          "help": {
+            "text": "user-friendly cron scheduler"
+          }
         }
       ]
     },
@@ -23,91 +34,172 @@
       "commands": [
         {
           "name": "start",
-          "execute": ["${packageDir}/aux4-cron start values(port, dir)"],
+          "execute": [
+            "${packageDir}/aux4-cron start values(port, dir)"
+          ],
           "help": {
             "text": "Start the cron scheduler",
             "variables": [
-              { "name": "port", "text": "Server port", "default": "8421" },
-              { "name": "dir", "text": "Working directory for cron files", "default": "." }
+              {
+                "name": "port",
+                "text": "Server port",
+                "default": "8421"
+              },
+              {
+                "name": "dir",
+                "text": "Working directory for cron files",
+                "default": "."
+              }
             ]
           }
         },
         {
           "name": "stop",
-          "execute": ["${packageDir}/aux4-cron stop values(port)"],
+          "execute": [
+            "${packageDir}/aux4-cron stop values(port)"
+          ],
           "help": {
             "text": "Stop the cron scheduler",
             "variables": [
-              { "name": "port", "text": "Server port", "default": "8421" }
+              {
+                "name": "port",
+                "text": "Server port",
+                "default": "8421"
+              }
             ]
           }
         },
         {
           "name": "add",
-          "execute": ["${packageDir}/aux4-cron add values(port, name, every, at, run)"],
+          "execute": [
+            "${packageDir}/aux4-cron add values(port, name, every, at, run)"
+          ],
           "help": {
             "text": "Add a scheduled task",
             "variables": [
-              { "name": "port", "text": "Server port", "default": "8421" },
-              { "name": "name", "text": "Task name" },
-              { "name": "every", "text": "Schedule expression (e.g. 10s, 15 min, 1 day, monday)" },
-              { "name": "at", "text": "Time of day (HH:MM)", "default": "" },
-              { "name": "run", "text": "Command to execute" }
+              {
+                "name": "port",
+                "text": "Server port",
+                "default": "8421"
+              },
+              {
+                "name": "name",
+                "text": "Task name"
+              },
+              {
+                "name": "every",
+                "text": "Schedule expression (e.g. 10s, 15 min, 1 day, monday)"
+              },
+              {
+                "name": "at",
+                "text": "Time of day (HH:MM)",
+                "default": ""
+              },
+              {
+                "name": "run",
+                "text": "Command to execute"
+              }
             ]
           }
         },
         {
           "name": "remove",
-          "execute": ["${packageDir}/aux4-cron remove values(port, name)"],
+          "execute": [
+            "${packageDir}/aux4-cron remove values(port, name)"
+          ],
           "help": {
             "text": "Remove a scheduled task",
             "variables": [
-              { "name": "port", "text": "Server port", "default": "8421" },
-              { "name": "name", "text": "Task name" }
+              {
+                "name": "port",
+                "text": "Server port",
+                "default": "8421"
+              },
+              {
+                "name": "name",
+                "text": "Task name"
+              }
             ]
           }
         },
         {
           "name": "pause",
-          "execute": ["${packageDir}/aux4-cron pause values(port, name)"],
+          "execute": [
+            "${packageDir}/aux4-cron pause values(port, name)"
+          ],
           "help": {
             "text": "Pause a scheduled task",
             "variables": [
-              { "name": "port", "text": "Server port", "default": "8421" },
-              { "name": "name", "text": "Task name" }
+              {
+                "name": "port",
+                "text": "Server port",
+                "default": "8421"
+              },
+              {
+                "name": "name",
+                "text": "Task name"
+              }
             ]
           }
         },
         {
           "name": "resume",
-          "execute": ["${packageDir}/aux4-cron resume values(port, name)"],
+          "execute": [
+            "${packageDir}/aux4-cron resume values(port, name)"
+          ],
           "help": {
             "text": "Resume a paused task",
             "variables": [
-              { "name": "port", "text": "Server port", "default": "8421" },
-              { "name": "name", "text": "Task name" }
+              {
+                "name": "port",
+                "text": "Server port",
+                "default": "8421"
+              },
+              {
+                "name": "name",
+                "text": "Task name"
+              }
             ]
           }
         },
         {
           "name": "list",
-          "execute": ["${packageDir}/aux4-cron list values(port)"],
+          "execute": [
+            "${packageDir}/aux4-cron list values(port)"
+          ],
           "help": {
             "text": "List all scheduled tasks",
             "variables": [
-              { "name": "port", "text": "Server port", "default": "8421" }
+              {
+                "name": "port",
+                "text": "Server port",
+                "default": "8421"
+              }
             ]
           }
         },
         {
           "name": "history",
-          "execute": ["${packageDir}/aux4-cron history values(port, name, limit)"],
+          "execute": [
+            "${packageDir}/aux4-cron history values(port, name, limit)"
+          ],
           "help": {
             "text": "Show execution history",
             "variables": [
-              { "name": "port", "text": "Server port", "default": "8421" },
-              { "name": "name", "text": "Task name" },
-              { "name": "limit", "text": "Max entries to show", "default": "10" }
+              {
+                "name": "port",
+                "text": "Server port",
+                "default": "8421"
+              },
+              {
+                "name": "name",
+                "text": "Task name"
+              },
+              {
+                "name": "limit",
+                "text": "Max entries to show",
+                "default": "10"
+              }
             ]
           }
         }
