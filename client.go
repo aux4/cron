@@ -63,14 +63,16 @@ func addEntry(args []string) {
 	name := getArg(args, 1, "")
 	every := getArg(args, 2, "")
 	at := getArg(args, 3, "")
-	run := getArg(args, 4, "")
+	in := getArg(args, 4, "")
+	max := getArg(args, 5, "")
+	run := getArg(args, 6, "")
 
 	if name == "" {
 		fmt.Fprintln(os.Stderr, "task name is required")
 		os.Exit(1)
 	}
-	if every == "" {
-		fmt.Fprintln(os.Stderr, "schedule expression is required")
+	if every == "" && in == "" && at == "" {
+		fmt.Fprintln(os.Stderr, "schedule expression is required (--every, --in, or --at)")
 		os.Exit(1)
 	}
 	if run == "" {
@@ -82,6 +84,8 @@ func addEntry(args []string) {
 		"name":  name,
 		"every": every,
 		"at":    at,
+		"in":    in,
+		"max":   max,
 		"run":   run,
 	}
 

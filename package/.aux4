@@ -72,7 +72,7 @@
         {
           "name": "add",
           "execute": [
-            "${packageDir}/aux4-cron add values(port, name, every, at, run)"
+            "${packageDir}/aux4-cron add values(port, name, every, at, in, max, run)"
           ],
           "help": {
             "text": "Add a scheduled task",
@@ -88,11 +88,22 @@
               },
               {
                 "name": "every",
-                "text": "Schedule expression (e.g. 10s, 15 min, 1 day, monday)"
+                "text": "Schedule expression (e.g. 10s, 15 min, 1 day, monday)",
+                "default": ""
               },
               {
                 "name": "at",
-                "text": "Time of day (HH:MM)",
+                "text": "Time of day (HH:MM, 2pm, 2:30pm)",
+                "default": ""
+              },
+              {
+                "name": "in",
+                "text": "One-time delay (e.g. 2 min, 30s, 1 hour)",
+                "default": ""
+              },
+              {
+                "name": "max",
+                "text": "Max executions before auto-remove",
                 "default": ""
               },
               {

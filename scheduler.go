@@ -18,6 +18,7 @@ const (
 	scheduleDaily
 	scheduleWeekly
 	scheduleMonthly
+	scheduleOnce
 )
 
 type schedule struct {
@@ -90,10 +91,24 @@ func (s *Scheduler) Unschedule(name string) {
 }
 
 func (s *Scheduler) scheduleEntry(entry CronEntry) {
-	sched, err := parseSchedule(entry.Every, entry.At)
+	var sched *schedule
+	var err error
+
+	if entry.In != "" {
+		sched, err = parseIn(entry.In)
+	} else if entry.Every == "" && entry.At != "" {
+		sched, err = parseAt(entry.At)
+	} else {
+		sched, err = parseSchedule(entry.Every, entry.At)
+	}
 	if err != nil {
 		fmt.Fprintf(defaultStderr, "failed to parse schedule for %s: %v\n", entry.Name, err)
 		return
+	}
+
+	max := entry.Max
+	if sched.Type == scheduleOnce {
+		max = 1
 	}
 
 	stop := make(chan struct{})
@@ -106,33 +121,54 @@ func (s *Scheduler) scheduleEntry(entry CronEntry) {
 	s.timers[entry.Name] = stop
 	s.mu.Unlock()
 
-	go s.runSchedule(entry.Name, entry.Run, sched, stop)
+	go s.runSchedule(entry.Name, entry.Run, sched, max, stop)
 }
 
-func (s *Scheduler) runSchedule(name, command string, sched *schedule, stop chan struct{}) {
+func (s *Scheduler) runSchedule(name, command string, sched *schedule, max int, stop chan struct{}) {
 	switch sched.Type {
+	case scheduleOnce:
+		s.runOnce(name, command, sched.Interval, stop)
 	case scheduleInterval:
-		s.runInterval(name, command, sched.Interval, stop)
+		s.runInterval(name, command, sched.Interval, max, stop)
 	case scheduleDaily, scheduleWeekly, scheduleMonthly:
-		s.runCalendar(name, command, sched, stop)
+		s.runCalendar(name, command, sched, max, stop)
 	}
 }
 
-func (s *Scheduler) runInterval(name, command string, interval time.Duration, stop chan struct{}) {
+func (s *Scheduler) runOnce(name, command string, delay time.Duration, stop chan struct{}) {
+	timer := time.NewTimer(delay)
+	select {
+	case <-stop:
+		timer.Stop()
+		return
+	case <-timer.C:
+		s.trigger(name, command)
+		s.autoRemove(name)
+	}
+}
+
+func (s *Scheduler) runInterval(name, command string, interval time.Duration, max int, stop chan struct{}) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
+	count := 0
 	for {
 		select {
 		case <-stop:
 			return
 		case <-ticker.C:
 			s.trigger(name, command)
+			count++
+			if max > 0 && count >= max {
+				s.autoRemove(name)
+				return
+			}
 		}
 	}
 }
 
-func (s *Scheduler) runCalendar(name, command string, sched *schedule, stop chan struct{}) {
+func (s *Scheduler) runCalendar(name, command string, sched *schedule, max int, stop chan struct{}) {
+	count := 0
 	for {
 		next := nextOccurrence(sched)
 		waitDuration := time.Until(next)
@@ -147,7 +183,21 @@ func (s *Scheduler) runCalendar(name, command string, sched *schedule, stop chan
 			return
 		case <-timer.C:
 			s.trigger(name, command)
+			count++
+			if max > 0 && count >= max {
+				s.autoRemove(name)
+				return
+			}
 		}
+	}
+}
+
+func (s *Scheduler) autoRemove(name string) {
+	s.Unschedule(name)
+	if err := s.store.Remove(name); err != nil {
+		fmt.Fprintf(defaultStderr, "cron %s: failed to auto-remove: %v\n", name, err)
+	} else {
+		fmt.Fprintf(defaultStderr, "cron %s: completed and removed\n", name)
 	}
 }
 
@@ -291,18 +341,72 @@ func parseSchedule(every, at string) (*schedule, error) {
 	return nil, fmt.Errorf("invalid schedule expression: %s", every)
 }
 
+func parseAt(at string) (*schedule, error) {
+	h, m, err := parseTimeOfDay(at)
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now()
+	target := time.Date(now.Year(), now.Month(), now.Day(), h, m, 0, 0, now.Location())
+	if !target.After(now) {
+		target = target.AddDate(0, 0, 1)
+	}
+	delay := time.Until(target)
+	return &schedule{Type: scheduleOnce, Interval: delay}, nil
+}
+
+func parseIn(in string) (*schedule, error) {
+	in = strings.TrimSpace(strings.ToLower(in))
+	if matches := intervalRegex.FindStringSubmatch(in); matches != nil {
+		n, _ := strconv.Atoi(matches[1])
+		unit := matches[2]
+		var d time.Duration
+		switch unit {
+		case "s", "sec", "secs", "second", "seconds":
+			d = time.Duration(n) * time.Second
+		case "m", "min", "mins", "minute", "minutes":
+			d = time.Duration(n) * time.Minute
+		case "h", "hr", "hrs", "hour", "hours":
+			d = time.Duration(n) * time.Hour
+		case "d", "day", "days":
+			d = time.Duration(n) * 24 * time.Hour
+		}
+		return &schedule{Type: scheduleOnce, Interval: d}, nil
+	}
+	return nil, fmt.Errorf("invalid --in expression: %s", in)
+}
+
+var timeRegex = regexp.MustCompile(`(?i)^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$`)
+
 func parseTimeOfDay(at string) (int, int, error) {
-	parts := strings.Split(at, ":")
-	if len(parts) != 2 {
-		return 0, 0, fmt.Errorf("invalid time format: %s (expected HH:MM)", at)
+	matches := timeRegex.FindStringSubmatch(strings.TrimSpace(at))
+	if matches == nil {
+		return 0, 0, fmt.Errorf("invalid time format: %s (expected HH:MM, 2pm, 2:30pm)", at)
 	}
-	h, err := strconv.Atoi(parts[0])
-	if err != nil || h < 0 || h > 23 {
-		return 0, 0, fmt.Errorf("invalid hour: %s", parts[0])
+
+	h, _ := strconv.Atoi(matches[1])
+	m := 0
+	if matches[2] != "" {
+		m, _ = strconv.Atoi(matches[2])
 	}
-	m, err := strconv.Atoi(parts[1])
-	if err != nil || m < 0 || m > 59 {
-		return 0, 0, fmt.Errorf("invalid minute: %s", parts[1])
+	period := strings.ToLower(matches[3])
+
+	if period != "" {
+		if h < 1 || h > 12 {
+			return 0, 0, fmt.Errorf("invalid hour for AM/PM: %d", h)
+		}
+		if period == "am" && h == 12 {
+			h = 0
+		} else if period == "pm" && h != 12 {
+			h += 12
+		}
+	}
+
+	if h < 0 || h > 23 {
+		return 0, 0, fmt.Errorf("invalid hour: %d", h)
+	}
+	if m < 0 || m > 59 {
+		return 0, 0, fmt.Errorf("invalid minute: %d", m)
 	}
 	return h, m, nil
 }

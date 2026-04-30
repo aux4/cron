@@ -5,3 +5,6 @@ aux4-cron
 go.sum
 
 .DS_Store
+.cron.json
+.cron-history.json
+.jobs/

@@ -119,6 +119,109 @@ aux4 cron history --name unknown-task --port 18430 | jq .
 []
 ````
 
+## add with --in
+
+### should add a one-time delayed task
+
+````execute
+aux4 cron add --name delayed-task --in "5 min" --run "echo delayed" --port 18430 | jq .
+````
+
+````expect
+{
+  "name": "delayed-task",
+  "in": "5 min",
+  "run": "echo delayed",
+  "state": "active"
+}
+````
+
+### should remove delayed task
+
+````execute
+aux4 cron remove --name delayed-task --port 18430 | jq .
+````
+
+````expect
+{
+  "name": "delayed-task",
+  "status": "REMOVED"
+}
+````
+
+## add with --max
+
+### should add a task with max executions
+
+````execute
+aux4 cron add --name limited-task --every 1s --max 3 --run "echo limited" --port 18430 | jq .
+````
+
+````expect
+{
+  "name": "limited-task",
+  "every": "1s",
+  "max": 3,
+  "run": "echo limited",
+  "state": "active"
+}
+````
+
+### should remove limited task
+
+````execute
+aux4 cron remove --name limited-task --port 18430 | jq .
+````
+
+````expect
+{
+  "name": "limited-task",
+  "status": "REMOVED"
+}
+````
+
+## add with --at standalone
+
+### should add a one-time at task
+
+````execute
+aux4 cron add --name at-task --at "2pm" --run "echo at-time" --port 18430 | jq .
+````
+
+````expect
+{
+  "name": "at-task",
+  "at": "2pm",
+  "run": "echo at-time",
+  "state": "active"
+}
+````
+
+### should remove at task
+
+````execute
+aux4 cron remove --name at-task --port 18430 | jq .
+````
+
+````expect
+{
+  "name": "at-task",
+  "status": "REMOVED"
+}
+````
+
+## add validation
+
+### should fail without schedule expression
+
+````execute
+aux4 cron add --name bad-task --run "echo fail" --port 18430
+````
+
+````error:partial
+schedule expression is required
+````
+
 ## remove
 
 ### should remove a cron entry

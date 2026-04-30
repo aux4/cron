@@ -54,6 +54,15 @@ aux4 cron add --name cleanup --every "5 min" --run "rm -rf /tmp/cache/*"
 aux4 cron add --name backup --every "1 day" --at "02:00" --run "aux4 backup run"
 aux4 cron add --name report --every monday --at "09:00" --run "aux4 report generate"
 aux4 cron add --name heartbeat --every 30s --run "curl -s http://localhost/health"
+
+# One-time delayed task (runs once then auto-removes)
+aux4 cron add --name reminder --in "5 min" --run "echo time is up"
+
+# Limited executions (auto-removes after 3 runs)
+aux4 cron add --name retry --every 10s --max 3 --run "curl -s http://localhost/health"
+
+# Run once at a specific time (AM/PM supported)
+aux4 cron add --name alert --at "2pm" --run "echo lunch time"
 ```
 
 ### Remove a task
@@ -107,6 +116,16 @@ Short forms: `10s`, `5min`, `2h`, `1d`
 Long forms: `10 seconds`, `5 minutes`, `2 hours`, `1 day`
 Singular/plural: `1 minute` = `1 min`
 Day names are case-insensitive.
+
+### One-time scheduling
+
+| Flag | Description |
+|------|-------------|
+| `--in "5 min"` | Run once after a delay, then auto-remove |
+| `--at "2pm"` (without `--every`) | Run once at the specified time, then auto-remove |
+| `--max 3` | Stop and auto-remove after N executions |
+
+Time formats for `--at`: `HH:MM` (24h), `2pm`, `2:30pm`, `12:00am`.
 
 ## Integration with aux4/jobs
 

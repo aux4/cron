@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 )
 
@@ -17,6 +18,21 @@ var defaultStderr io.Writer = os.Stderr
 func startServer(args []string) {
 	port := getArg(args, 0, "8421")
 	dir := getArg(args, 1, ".")
+
+	// If already running, exit successfully
+	pidFile := pidFilePath(port)
+	if pidData, err := os.ReadFile(pidFile); err == nil {
+		pid, err := strconv.Atoi(strings.TrimSpace(string(pidData)))
+		if err == nil {
+			if proc, err := os.FindProcess(pid); err == nil {
+				if proc.Signal(syscall.Signal(0)) == nil {
+					fmt.Fprintf(os.Stdout, "{\"status\":\"ALREADY_RUNNING\",\"pid\":%d,\"port\":\"%s\"}\n", pid, port)
+					return
+				}
+			}
+		}
+		os.Remove(pidFile)
+	}
 
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
@@ -46,14 +62,16 @@ func startServer(args []string) {
 		name := r.URL.Query().Get("name")
 		every := r.URL.Query().Get("every")
 		at := r.URL.Query().Get("at")
+		in := r.URL.Query().Get("in")
+		maxStr := r.URL.Query().Get("max")
 		run := r.URL.Query().Get("run")
 
 		if name == "" {
 			httpError(w, http.StatusBadRequest, "name is required")
 			return
 		}
-		if every == "" {
-			httpError(w, http.StatusBadRequest, "every is required")
+		if every == "" && in == "" && at == "" {
+			httpError(w, http.StatusBadRequest, "every, in, or at is required")
 			return
 		}
 		if run == "" {
@@ -62,15 +80,39 @@ func startServer(args []string) {
 		}
 
 		// Validate schedule expression
-		if _, err := parseSchedule(every, at); err != nil {
-			httpError(w, http.StatusBadRequest, err.Error())
-			return
+		if in != "" {
+			if _, err := parseIn(in); err != nil {
+				httpError(w, http.StatusBadRequest, err.Error())
+				return
+			}
+		} else if every == "" && at != "" {
+			if _, err := parseAt(at); err != nil {
+				httpError(w, http.StatusBadRequest, err.Error())
+				return
+			}
+		} else {
+			if _, err := parseSchedule(every, at); err != nil {
+				httpError(w, http.StatusBadRequest, err.Error())
+				return
+			}
+		}
+
+		max := 0
+		if maxStr != "" {
+			n, err := strconv.Atoi(maxStr)
+			if err != nil || n < 1 {
+				httpError(w, http.StatusBadRequest, "max must be a positive integer")
+				return
+			}
+			max = n
 		}
 
 		entry := CronEntry{
 			Name:  name,
 			Every: every,
 			At:    at,
+			In:    in,
+			Max:   max,
 			Run:   run,
 			State: "active",
 		}
@@ -179,7 +221,7 @@ func startServer(args []string) {
 		httpJSON(w, http.StatusOK, history)
 	})
 
-	pidFile := pidFilePath(port)
+	pidFile = pidFilePath(port)
 	if err := os.WriteFile(pidFile, []byte(strconv.Itoa(os.Getpid())), 0644); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to write pid file: %v\n", err)
 		os.Exit(1)

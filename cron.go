@@ -9,8 +9,10 @@ import (
 
 type CronEntry struct {
 	Name  string `json:"name"`
-	Every string `json:"every"`
+	Every string `json:"every,omitempty"`
 	At    string `json:"at,omitempty"`
+	In    string `json:"in,omitempty"`
+	Max   int    `json:"max,omitempty"`
 	Run   string `json:"run"`
 	State string `json:"state"`
 }
