@@ -2,10 +2,10 @@
 
 User-friendly cron scheduler with aux4/jobs integration.
 
-## Install
+## Installation
 
 ```bash
-aux4 install aux4/cron
+aux4 aux4 pkger install aux4/cron
 ```
 
 ## Quick Start
